@@ -1,0 +1,26 @@
+{
+  "name": "Mi Siembra — Pilón",
+  "short_name": "Mi Siembra",
+  "description": "Seguimiento de cultivos y fase lunar en Pilón, Granma",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080d17",
+  "theme_color": "#10b981",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
