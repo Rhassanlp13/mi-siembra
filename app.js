@@ -11,6 +11,109 @@ const SB_HEADERS = {
 };
 
 /* ════════════════════════════════════════════════════════════
+   FASES LUNARES 2026 (datos reales de la API)
+   Phase: 0=Nueva · 1=Cuarto Creciente · 2=Llena · 3=Cuarto Menguante
+   ════════════════════════════════════════════════════════════ */
+const FASES_LUNARES = [
+  {"Date":"2026-01-03T10:03:00Z","Phase":2},
+  {"Date":"2026-01-10T15:48:00Z","Phase":3},
+  {"Date":"2026-01-18T19:52:00Z","Phase":0},
+  {"Date":"2026-01-26T04:47:00Z","Phase":1},
+  {"Date":"2026-02-01T22:09:00Z","Phase":2},
+  {"Date":"2026-02-09T12:43:00Z","Phase":3},
+  {"Date":"2026-02-17T12:01:00Z","Phase":0},
+  {"Date":"2026-02-24T12:27:00Z","Phase":1},
+  {"Date":"2026-03-03T11:38:00Z","Phase":2},
+  {"Date":"2026-03-11T09:38:00Z","Phase":3},
+  {"Date":"2026-03-19T01:23:00Z","Phase":0},
+  {"Date":"2026-03-25T19:18:00Z","Phase":1},
+  {"Date":"2026-04-02T02:12:00Z","Phase":2},
+  {"Date":"2026-04-10T04:51:00Z","Phase":3},
+  {"Date":"2026-04-17T11:52:00Z","Phase":0},
+  {"Date":"2026-04-24T02:32:00Z","Phase":1},
+  {"Date":"2026-05-01T17:23:00Z","Phase":2},
+  {"Date":"2026-05-09T21:10:00Z","Phase":3},
+  {"Date":"2026-05-16T20:01:00Z","Phase":0},
+  {"Date":"2026-05-23T11:11:00Z","Phase":1},
+  {"Date":"2026-05-31T08:45:00Z","Phase":2},
+  {"Date":"2026-06-08T10:00:00Z","Phase":3},
+  {"Date":"2026-06-15T02:54:00Z","Phase":0},
+  {"Date":"2026-06-21T21:55:00Z","Phase":1},
+  {"Date":"2026-06-29T23:56:00Z","Phase":2},
+  {"Date":"2026-07-07T19:29:00Z","Phase":3},
+  {"Date":"2026-07-14T09:43:00Z","Phase":0},
+  {"Date":"2026-07-21T11:05:00Z","Phase":1},
+  {"Date":"2026-07-29T14:36:00Z","Phase":2},
+  {"Date":"2026-08-06T02:21:00Z","Phase":3},
+  {"Date":"2026-08-12T17:37:00Z","Phase":0},
+  {"Date":"2026-08-20T02:46:00Z","Phase":1},
+  {"Date":"2026-08-28T04:18:00Z","Phase":2},
+  {"Date":"2026-09-04T07:51:00Z","Phase":3},
+  {"Date":"2026-09-11T03:27:00Z","Phase":0},
+  {"Date":"2026-09-18T20:44:00Z","Phase":1},
+  {"Date":"2026-09-26T16:49:00Z","Phase":2},
+  {"Date":"2026-10-03T13:25:00Z","Phase":3},
+  {"Date":"2026-10-10T15:50:00Z","Phase":0},
+  {"Date":"2026-10-18T16:12:00Z","Phase":1},
+  {"Date":"2026-10-26T04:12:00Z","Phase":2},
+  {"Date":"2026-11-01T20:28:00Z","Phase":3},
+  {"Date":"2026-11-09T07:02:00Z","Phase":0},
+  {"Date":"2026-11-17T11:48:00Z","Phase":1},
+  {"Date":"2026-11-24T14:53:00Z","Phase":2},
+  {"Date":"2026-12-01T06:08:00Z","Phase":3},
+  {"Date":"2026-12-09T00:52:00Z","Phase":0},
+  {"Date":"2026-12-17T05:42:00Z","Phase":1},
+  {"Date":"2026-12-24T01:28:00Z","Phase":2},
+  {"Date":"2026-12-30T18:59:00Z","Phase":3}
+];
+
+function getFaseActual(){
+  const ahora = Date.now();
+  const fases = FASES_LUNARES.map(f => ({ ...f, fecha: new Date(f.Date) }));
+
+  // Última fase pasada
+  let ultima = null;
+  for (const f of fases){
+    if (f.fecha.getTime() <= ahora) ultima = f;
+    else break;
+  }
+  if (!ultima) return { nombre:'nueva', icono:'🌑', edad:0, ilum:0 };
+
+  // Días desde la última Luna Nueva
+  const ultimaNueva = fases.filter(f => f.Phase === 0 && f.fecha.getTime() <= ahora).pop();
+  const edad = ultimaNueva
+    ? (ahora - ultimaNueva.fecha.getTime()) / 86400000
+    : 0;
+
+  // Iluminación aproximada según edad
+  const synodic = 29.530588853;
+  const phase = (edad % synodic) / synodic;
+  const ilum = Math.round((1 - Math.cos(2 * Math.PI * phase)) / 2 * 100);
+
+  // Nombre según posición en el ciclo
+  let nombre, icono;
+  if      (phase < 0.0625) { nombre = 'nueva';              icono = '🌑'; }
+  else if (phase < 0.1875) { nombre = 'creciente cóncava';  icono = '🌒'; }
+  else if (phase < 0.3125) { nombre = 'cuarto creciente';   icono = '🌓'; }
+  else if (phase < 0.4375) { nombre = 'gibosa creciente';   icono = '🌔'; }
+  else if (phase < 0.5625) { nombre = 'llena';              icono = '🌕'; }
+  else if (phase < 0.6875) { nombre = 'gibosa menguante';   icono = '🌖'; }
+  else if (phase < 0.8125) { nombre = 'cuarto menguante';   icono = '🌗'; }
+  else if (phase < 0.9375) { nombre = 'menguante cóncava';  icono = '🌘'; }
+  else                     { nombre = 'nueva';              icono = '🌑'; }
+
+  return { nombre, icono, edad: Math.round(edad), ilum };
+}
+
+function getProximasFases(cantidad = 5){
+  const ahora = Date.now();
+  return FASES_LUNARES
+    .map(f => ({ ...f, fecha: new Date(f.Date) }))
+    .filter(f => f.fecha.getTime() > ahora)
+    .slice(0, cantidad);
+}
+
+/* ════════════════════════════════════════════════════════════
    ALMACENAMIENTO LOCAL
    ════════════════════════════════════════════════════════════ */
 const KEY = 'siembras_local_v1';
@@ -303,122 +406,6 @@ const RECOMENDACIONES = [
 ];
 
 /* ════════════════════════════════════════════════════════════
-   FASE LUNAR — 8 fases con nombres astronómicos
-   ════════════════════════════════════════════════════════════ */
-function getMoonPhase(date = new Date()) {
-  const ref = Date.UTC(2000, 0, 6, 18, 14);
-  const synodic = 29.530588853;
-  const days = (date.getTime() - ref) / 86400000;
-  let age = days % synodic;
-  if (age < 0) age += synodic;
-  const phase = age / synodic;
-  const ilum = Math.round((1 - Math.cos(2 * Math.PI * phase)) / 2 * 100);
-
-  let nombre, icono;
-  if      (phase < 0.0625) { nombre = 'nueva';              icono = '🌑'; }
-  else if (phase < 0.1875) { nombre = 'creciente cóncava';  icono = '🌒'; }
-  else if (phase < 0.3125) { nombre = 'cuarto creciente';   icono = '🌓'; }
-  else if (phase < 0.4375) { nombre = 'gibosa creciente';   icono = '🌔'; }
-  else if (phase < 0.5625) { nombre = 'llena';              icono = '🌕'; }
-  else if (phase < 0.6875) { nombre = 'gibosa menguante';   icono = '🌖'; }
-  else if (phase < 0.8125) { nombre = 'cuarto menguante';   icono = '🌗'; }
-  else if (phase < 0.9375) { nombre = 'menguante cóncava';  icono = '🌘'; }
-  else                     { nombre = 'nueva';              icono = '🌑'; }
-
-  const diasParaNueva = synodic - age;
-  const proximaNueva = new Date(date.getTime() + diasParaNueva * 86400000);
-  return { nombre, icono, ilum, age: Math.round(age), proximaNueva };
-}
-
-/* ════════════════════════════════════════════════════════════
-   Algoritmo astronómico de Meeus para fases exactas
-   ════════════════════════════════════════════════════════════ */
-const RAD = Math.PI / 180;
-
-function calcularFaseMeeus(k, tipo){
-  // tipo: 0 = Nueva, 1 = Cuarto Creciente, 2 = Llena, 3 = Cuarto Menguante
-  const T  = k / 1236.85;
-  const T2 = T * T;
-  const T3 = T2 * T;
-  const T4 = T3 * T;
-
-  let JDE = 2451550.09766 + 29.530588861 * k
-          + 0.00015437 * T2
-          - 0.000000150 * T3
-          + 0.00000000073 * T4;
-
-  const E  = 1 - 0.002516 * T - 0.0000074 * T2;
-  const M  = (2.5534    + 29.10535670 * k - 0.0000014  * T2 - 0.00000011  * T3) * RAD;
-  const Mp = (201.5643  + 385.81693528 * k + 0.0107582 * T2 + 0.00001238 * T3 - 0.000000058 * T4) * RAD;
-  const F  = (160.7108  + 390.67050284 * k - 0.0016118 * T2 - 0.00000227 * T3 + 0.000000011 * T4) * RAD;
-  const O  = (124.7746  - 1.56375588  * k + 0.0020672 * T2 + 0.00000215 * T3) * RAD;
-
-  if (tipo === 1 || tipo === 3) JDE += 0.25 * 29.530588861;
-  if (tipo === 2)               JDE += 0.5  * 29.530588861;
-
-  let c = 0;
-  if (tipo === 0 || tipo === 2){ // Nueva y Llena
-    c += -0.40720 * Math.sin(Mp);
-    c +=  0.17241 * E * Math.sin(M);
-    c +=  0.01608 * Math.sin(2 * Mp);
-    c +=  0.01039 * Math.sin(2 * F);
-    c +=  0.00739 * E * Math.sin(Mp - M);
-    c += -0.00514 * E * Math.sin(Mp + M);
-    c +=  0.00208 * E * E * Math.sin(2 * M);
-    c += -0.00111 * Math.sin(Mp - 2 * F);
-    c += -0.00057 * Math.sin(Mp + 2 * F);
-    c +=  0.00056 * E * Math.sin(2 * Mp + M);
-    c += -0.00042 * Math.sin(3 * Mp);
-    c +=  0.00042 * E * Math.sin(M + 2 * F);
-    c +=  0.00038 * E * Math.sin(M - 2 * F);
-    c += -0.00024 * E * Math.sin(2 * Mp - M);
-    c += -0.00017 * Math.sin(O);
-    c += -0.00007 * Math.sin(Mp + 2 * M);
-    c +=  0.00004 * Math.sin(2 * Mp - 2 * F);
-    c +=  0.00004 * Math.sin(3 * M);
-    c +=  0.00003 * Math.sin(Mp + M - 2 * F);
-    c +=  0.00003 * Math.sin(2 * Mp + 2 * F);
-    c += -0.00003 * Math.sin(Mp + M + 2 * F);
-    c +=  0.00003 * Math.sin(Mp - M + 2 * F);
-    c += -0.00002 * Math.sin(Mp - M - 2 * F);
-    c += -0.00002 * Math.sin(3 * Mp + M);
-    c +=  0.00002 * Math.sin(4 * Mp);
-  } else { // Cuartos
-    c += -0.62801 * Math.sin(Mp);
-    c +=  0.17172 * E * Math.sin(M);
-    c += -0.01183 * E * Math.sin(Mp + M);
-    c +=  0.00862 * Math.sin(2 * Mp);
-    c +=  0.00804 * Math.sin(2 * F);
-    c +=  0.00454 * E * Math.sin(Mp - M);
-    c +=  0.00204 * E * E * Math.sin(2 * M);
-    c += -0.00180 * Math.sin(Mp - 2 * F);
-    c += -0.00070 * Math.sin(Mp + 2 * F);
-    c += -0.00040 * Math.sin(3 * Mp);
-    c += -0.00034 * E * Math.sin(2 * Mp - M);
-    c +=  0.00032 * E * Math.sin(M + 2 * F);
-    c +=  0.00032 * E * Math.sin(M - 2 * F);
-    c += -0.00028 * E * E * Math.sin(Mp + 2 * M);
-    c +=  0.00027 * E * Math.sin(2 * Mp + M);
-    c += -0.00017 * Math.sin(O);
-    c += -0.00005 * Math.sin(Mp - M - 2 * F);
-    c +=  0.00004 * Math.sin(2 * Mp + 2 * F);
-    c += -0.00004 * Math.sin(Mp + M + 2 * F);
-    c +=  0.00004 * Math.sin(Mp - 2 * M);
-    c +=  0.00003 * Math.sin(Mp + M - 2 * F);
-    c +=  0.00003 * Math.sin(3 * M);
-    c +=  0.00002 * Math.sin(2 * Mp - 2 * F);
-    c +=  0.00002 * Math.sin(Mp - M + 2 * F);
-    c += -0.00002 * Math.sin(3 * Mp + M);
-  }
-
-  return JDE + c;
-}
-
-function jdeADate(jde){
-  return new Date((jde - 2440587.5) * 86400000);
-}
-
-/* ════════════════════════════════════════════════════════════
    UTILIDADES
    ════════════════════════════════════════════════════════════ */
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -499,29 +486,21 @@ const PALETA = {
 };
 
 /* ════════════════════════════════════════════════════════════
-   RENDER LUNA (barra superior) — con algoritmo preciso
+   RENDER LUNA (barra superior)
    ════════════════════════════════════════════════════════════ */
 function renderMoonBar(){
-  const m = getMoonPhase();
-  document.getElementById('moonIcon').textContent = m.icono;
-  document.getElementById('moonName').textContent = `Luna ${m.nombre}`;
-  document.getElementById('moonIlum').textContent = `${m.ilum}% iluminada`;
-  document.getElementById('moonAge').textContent  = `${m.age} días de edad`;
+  const fase = getFaseActual();
 
-  // Buscar la próxima Luna Nueva con el algoritmo preciso
-  const hoy = new Date();
-  const año = hoy.getUTCFullYear();
-  const mes = hoy.getUTCMonth() + 1;
-  const kBase = Math.floor((año - 2000) * 12.3685 + (mes - 1) * 1.0306) - 2;
+  document.getElementById('moonIcon').textContent = fase.icono;
+  document.getElementById('moonName').textContent = `Luna ${fase.nombre}`;
+  document.getElementById('moonIlum').textContent = `${fase.ilum}% iluminada`;
+  document.getElementById('moonAge').textContent  = `${fase.edad} días de edad`;
 
-  let proxima = m.proximaNueva; // fallback
-  for (let k = kBase; k <= kBase + 6; k++){
-    const fecha = jdeADate(calcularFaseMeeus(k, 0));
-    if (fecha > hoy){ proxima = fecha; break; }
+  const proxima = getProximasFases(10).find(f => f.Phase === 0);
+  if (proxima){
+    document.getElementById('moonRec').innerHTML =
+      `Próxima luna nueva: <span class="text-white font-bold">${fmt(proxima.fecha)}</span>`;
   }
-
-  document.getElementById('moonRec').innerHTML =
-    `Próxima luna nueva: <span class="text-white font-bold">${fmt(proxima)}</span>`;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -555,7 +534,7 @@ function renderSiembras(){
     return;
   }
 
-  const m = getMoonPhase();
+  const m = getFaseActual();
 
   cont.innerHTML = lista.map((s, i) => {
     const e = calcularEstado(s);
@@ -789,39 +768,25 @@ function renderCalendario(){
 }
 
 /* ════════════════════════════════════════════════════════════
-   RENDER LUNA DEL MES (pestaña Luna) — algoritmo de Meeus
+   RENDER LUNA DEL MES (pestaña Luna)
    ════════════════════════════════════════════════════════════ */
 function renderLunaMes(){
   const cont = document.getElementById('lunaContent');
+  const fase = getFaseActual();
+  const proximas = getProximasFases(5);
   const hoy = new Date();
-  const m = getMoonPhase(hoy);
 
-  const añoActual = hoy.getUTCFullYear();
-  const mesActual = hoy.getUTCMonth() + 1;
-  const kBase = Math.floor((añoActual - 2000) * 12.3685 + (mesActual - 1) * 1.0306) - 2;
-
-  const candidatos = [];
-  for (let k = kBase; k <= kBase + 6; k++){
-    for (let tipo = 0; tipo < 4; tipo++){
-      const fecha = jdeADate(calcularFaseMeeus(k, tipo));
-      if (fecha > hoy){
-        const emojis = ['🌑', '🌓', '🌕', '🌗'];
-        const nombres = ['Luna Nueva', 'Cuarto Creciente', 'Luna Llena', 'Cuarto Menguante'];
-        candidatos.push({ fecha, emoji: emojis[tipo], nombre: nombres[tipo] });
-      }
-    }
-  }
-  candidatos.sort((a, b) => a.fecha - b.fecha);
-  const proximas = candidatos.slice(0, 5);
+  const nombres = ['Luna Nueva', 'Cuarto Creciente', 'Luna Llena', 'Cuarto Menguante'];
+  const emojis  = ['🌑', '🌓', '🌕', '🌗'];
 
   cont.innerHTML = `
     <div class="rounded-2xl bg-gradient-to-br from-indigo-500/15 to-purple-500/10 border border-indigo-400/20 p-4 mb-4">
       <div class="flex items-center gap-3">
-        <span class="text-4xl">${m.icono}</span>
+        <span class="text-4xl">${fase.icono}</span>
         <div>
           <p class="text-xs uppercase tracking-wider font-bold text-indigo-300">Hoy</p>
-          <p class="text-base font-extrabold text-slate-100">Luna ${m.nombre}</p>
-          <p class="text-xs text-slate-400">${m.ilum}% iluminada · ${m.age} días de edad</p>
+          <p class="text-base font-extrabold text-slate-100">Luna ${fase.nombre}</p>
+          <p class="text-xs text-slate-400">${fase.ilum}% iluminada · ${fase.edad} días de edad</p>
         </div>
       </div>
     </div>
@@ -832,9 +797,9 @@ function renderLunaMes(){
         const dias = Math.round((f.fecha - hoy) / 86400000);
         return `
           <div class="flex items-center gap-3 rounded-xl bg-white/[.03] border border-white/[.06] px-3.5 py-2.5">
-            <span class="text-2xl">${f.emoji}</span>
+            <span class="text-2xl">${emojis[f.Phase]}</span>
             <div class="flex-1">
-              <p class="text-[13px] font-bold text-slate-200">${f.nombre}</p>
+              <p class="text-[13px] font-bold text-slate-200">${nombres[f.Phase]}</p>
               <p class="text-[11px] text-slate-500">${fmt(f.fecha)} · en ${dias} día${dias === 1 ? '' : 's'}</p>
             </div>
           </div>`;
