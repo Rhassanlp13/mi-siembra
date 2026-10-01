@@ -67,40 +67,43 @@ const FASES_LUNARES = [
   {"Date":"2026-12-30T18:59:00Z","Phase":3}
 ];
 
+/* ════════════════════════════════════════════════════════════
+   FASE LUNAR ACTUAL — basada en iluminación real
+   ════════════════════════════════════════════════════════════ */
 function getFaseActual(){
   const ahora = Date.now();
   const fases = FASES_LUNARES.map(f => ({ ...f, fecha: new Date(f.Date) }));
 
-  // Última fase pasada
-  let ultima = null;
-  for (const f of fases){
-    if (f.fecha.getTime() <= ahora) ultima = f;
-    else break;
-  }
-  if (!ultima) return { nombre:'nueva', icono:'🌑', edad:0, ilum:0 };
-
-  // Días desde la última Luna Nueva
+  // Calcular edad (días desde la última Luna Nueva)
   const ultimaNueva = fases.filter(f => f.Phase === 0 && f.fecha.getTime() <= ahora).pop();
-  const edad = ultimaNueva
-    ? (ahora - ultimaNueva.fecha.getTime()) / 86400000
-    : 0;
+  if (!ultimaNueva) return { nombre: 'nueva', icono: '🌑', edad: 0, ilum: 0 };
 
-  // Iluminación aproximada según edad
+  const edad = (ahora - ultimaNueva.fecha.getTime()) / 86400000;
+
+  // Iluminación según la edad
   const synodic = 29.530588853;
   const phase = (edad % synodic) / synodic;
   const ilum = Math.round((1 - Math.cos(2 * Math.PI * phase)) / 2 * 100);
 
-  // Nombre según posición en el ciclo
+  // ¿Está creciendo o menguando?
+  const creciendo = phase < 0.5;
+
+  // Nombre según iluminación real
   let nombre, icono;
-  if      (phase < 0.0625) { nombre = 'nueva';              icono = '🌑'; }
-  else if (phase < 0.1875) { nombre = 'creciente cóncava';  icono = '🌒'; }
-  else if (phase < 0.3125) { nombre = 'cuarto creciente';   icono = '🌓'; }
-  else if (phase < 0.4375) { nombre = 'gibosa creciente';   icono = '🌔'; }
-  else if (phase < 0.5625) { nombre = 'llena';              icono = '🌕'; }
-  else if (phase < 0.6875) { nombre = 'gibosa menguante';   icono = '🌖'; }
-  else if (phase < 0.8125) { nombre = 'cuarto menguante';   icono = '🌗'; }
-  else if (phase < 0.9375) { nombre = 'menguante cóncava';  icono = '🌘'; }
-  else                     { nombre = 'nueva';              icono = '🌑'; }
+  if (ilum < 3) {
+    nombre = 'nueva'; icono = '🌑';
+  } else if (ilum > 97) {
+    nombre = 'llena'; icono = '🌕';
+  } else if (ilum >= 45 && ilum <= 55) {
+    if (creciendo) { nombre = 'cuarto creciente'; icono = '🌓'; }
+    else           { nombre = 'cuarto menguante'; icono = '🌗'; }
+  } else if (ilum < 45) {
+    if (creciendo) { nombre = 'creciente cóncava'; icono = '🌒'; }
+    else           { nombre = 'menguante cóncava'; icono = '🌘'; }
+  } else {
+    if (creciendo) { nombre = 'gibosa creciente'; icono = '🌔'; }
+    else           { nombre = 'gibosa menguante'; icono = '🌖'; }
+  }
 
   return { nombre, icono, edad: Math.round(edad), ilum };
 }
