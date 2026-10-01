@@ -303,7 +303,7 @@ const RECOMENDACIONES = [
 ];
 
 /* ════════════════════════════════════════════════════════════
-   FASE LUNAR
+   FASE LUNAR — 8 fases con nombres astronómicos
    ════════════════════════════════════════════════════════════ */
 function getMoonPhase(date = new Date()) {
   const ref = Date.UTC(2000, 0, 6, 18, 14);
@@ -315,10 +315,15 @@ function getMoonPhase(date = new Date()) {
   const ilum = Math.round((1 - Math.cos(2 * Math.PI * phase)) / 2 * 100);
 
   let nombre, icono;
-  if (phase < 0.0625 || phase >= 0.9375) { nombre = 'nueva';      icono = '🌑'; }
-  else if (phase < 0.4375)               { nombre = 'creciente';  icono = phase < 0.25 ? '🌒' : '🌓'; }
-  else if (phase < 0.5625)               { nombre = 'llena';      icono = '🌕'; }
-  else                                   { nombre = 'menguante';  icono = phase < 0.75 ? '🌖' : '🌗'; }
+  if      (phase < 0.0625) { nombre = 'nueva';              icono = '🌑'; }
+  else if (phase < 0.1875) { nombre = 'creciente cóncava';  icono = '🌒'; }
+  else if (phase < 0.3125) { nombre = 'cuarto creciente';   icono = '🌓'; }
+  else if (phase < 0.4375) { nombre = 'gibosa creciente';   icono = '🌔'; }
+  else if (phase < 0.5625) { nombre = 'llena';              icono = '🌕'; }
+  else if (phase < 0.6875) { nombre = 'gibosa menguante';   icono = '🌖'; }
+  else if (phase < 0.8125) { nombre = 'cuarto menguante';   icono = '🌗'; }
+  else if (phase < 0.9375) { nombre = 'menguante cóncava';  icono = '🌘'; }
+  else                     { nombre = 'nueva';              icono = '🌑'; }
 
   const diasParaNueva = synodic - age;
   const proximaNueva = new Date(date.getTime() + diasParaNueva * 86400000);
@@ -406,7 +411,7 @@ const PALETA = {
 };
 
 /* ════════════════════════════════════════════════════════════
-   RENDER LUNA
+   RENDER LUNA (barra superior)
    ════════════════════════════════════════════════════════════ */
 function renderMoonBar(){
   const m = getMoonPhase();
@@ -682,6 +687,9 @@ function renderCalendario(){
     </div>`;
 }
 
+/* ════════════════════════════════════════════════════════════
+   RENDER LUNA DEL MES (pestaña Luna)
+   ════════════════════════════════════════════════════════════ */
 function renderLunaMes(){
   const cont = document.getElementById('lunaContent');
   const hoy = new Date();
