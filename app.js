@@ -331,6 +331,94 @@ function getMoonPhase(date = new Date()) {
 }
 
 /* ════════════════════════════════════════════════════════════
+   Algoritmo astronómico de Meeus para fases exactas
+   ════════════════════════════════════════════════════════════ */
+const RAD = Math.PI / 180;
+
+function calcularFaseMeeus(k, tipo){
+  // tipo: 0 = Nueva, 1 = Cuarto Creciente, 2 = Llena, 3 = Cuarto Menguante
+  const T  = k / 1236.85;
+  const T2 = T * T;
+  const T3 = T2 * T;
+  const T4 = T3 * T;
+
+  let JDE = 2451550.09766 + 29.530588861 * k
+          + 0.00015437 * T2
+          - 0.000000150 * T3
+          + 0.00000000073 * T4;
+
+  const E  = 1 - 0.002516 * T - 0.0000074 * T2;
+  const M  = (2.5534    + 29.10535670 * k - 0.0000014  * T2 - 0.00000011  * T3) * RAD;
+  const Mp = (201.5643  + 385.81693528 * k + 0.0107582 * T2 + 0.00001238 * T3 - 0.000000058 * T4) * RAD;
+  const F  = (160.7108  + 390.67050284 * k - 0.0016118 * T2 - 0.00000227 * T3 + 0.000000011 * T4) * RAD;
+  const O  = (124.7746  - 1.56375588  * k + 0.0020672 * T2 + 0.00000215 * T3) * RAD;
+
+  if (tipo === 1 || tipo === 3) JDE += 0.25 * 29.530588861;
+  if (tipo === 2)               JDE += 0.5  * 29.530588861;
+
+  let c = 0;
+  if (tipo === 0 || tipo === 2){ // Nueva y Llena
+    c += -0.40720 * Math.sin(Mp);
+    c +=  0.17241 * E * Math.sin(M);
+    c +=  0.01608 * Math.sin(2 * Mp);
+    c +=  0.01039 * Math.sin(2 * F);
+    c +=  0.00739 * E * Math.sin(Mp - M);
+    c += -0.00514 * E * Math.sin(Mp + M);
+    c +=  0.00208 * E * E * Math.sin(2 * M);
+    c += -0.00111 * Math.sin(Mp - 2 * F);
+    c += -0.00057 * Math.sin(Mp + 2 * F);
+    c +=  0.00056 * E * Math.sin(2 * Mp + M);
+    c += -0.00042 * Math.sin(3 * Mp);
+    c +=  0.00042 * E * Math.sin(M + 2 * F);
+    c +=  0.00038 * E * Math.sin(M - 2 * F);
+    c += -0.00024 * E * Math.sin(2 * Mp - M);
+    c += -0.00017 * Math.sin(O);
+    c += -0.00007 * Math.sin(Mp + 2 * M);
+    c +=  0.00004 * Math.sin(2 * Mp - 2 * F);
+    c +=  0.00004 * Math.sin(3 * M);
+    c +=  0.00003 * Math.sin(Mp + M - 2 * F);
+    c +=  0.00003 * Math.sin(2 * Mp + 2 * F);
+    c += -0.00003 * Math.sin(Mp + M + 2 * F);
+    c +=  0.00003 * Math.sin(Mp - M + 2 * F);
+    c += -0.00002 * Math.sin(Mp - M - 2 * F);
+    c += -0.00002 * Math.sin(3 * Mp + M);
+    c +=  0.00002 * Math.sin(4 * Mp);
+  } else { // Cuartos
+    c += -0.62801 * Math.sin(Mp);
+    c +=  0.17172 * E * Math.sin(M);
+    c += -0.01183 * E * Math.sin(Mp + M);
+    c +=  0.00862 * Math.sin(2 * Mp);
+    c +=  0.00804 * Math.sin(2 * F);
+    c +=  0.00454 * E * Math.sin(Mp - M);
+    c +=  0.00204 * E * E * Math.sin(2 * M);
+    c += -0.00180 * Math.sin(Mp - 2 * F);
+    c += -0.00070 * Math.sin(Mp + 2 * F);
+    c += -0.00040 * Math.sin(3 * Mp);
+    c += -0.00034 * E * Math.sin(2 * Mp - M);
+    c +=  0.00032 * E * Math.sin(M + 2 * F);
+    c +=  0.00032 * E * Math.sin(M - 2 * F);
+    c += -0.00028 * E * E * Math.sin(Mp + 2 * M);
+    c +=  0.00027 * E * Math.sin(2 * Mp + M);
+    c += -0.00017 * Math.sin(O);
+    c += -0.00005 * Math.sin(Mp - M - 2 * F);
+    c +=  0.00004 * Math.sin(2 * Mp + 2 * F);
+    c += -0.00004 * Math.sin(Mp + M + 2 * F);
+    c +=  0.00004 * Math.sin(Mp - 2 * M);
+    c +=  0.00003 * Math.sin(Mp + M - 2 * F);
+    c +=  0.00003 * Math.sin(3 * M);
+    c +=  0.00002 * Math.sin(2 * Mp - 2 * F);
+    c +=  0.00002 * Math.sin(Mp - M + 2 * F);
+    c += -0.00002 * Math.sin(3 * Mp + M);
+  }
+
+  return JDE + c;
+}
+
+function jdeADate(jde){
+  return new Date((jde - 2440587.5) * 86400000);
+}
+
+/* ════════════════════════════════════════════════════════════
    UTILIDADES
    ════════════════════════════════════════════════════════════ */
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -411,16 +499,29 @@ const PALETA = {
 };
 
 /* ════════════════════════════════════════════════════════════
-   RENDER LUNA (barra superior)
+   RENDER LUNA (barra superior) — con algoritmo preciso
    ════════════════════════════════════════════════════════════ */
 function renderMoonBar(){
   const m = getMoonPhase();
   document.getElementById('moonIcon').textContent = m.icono;
   document.getElementById('moonName').textContent = `Luna ${m.nombre}`;
-  document.getElementById('moonRec').innerHTML =
-    `Próxima luna nueva: <span class="text-white font-bold">${fmt(m.proximaNueva)}</span>`;
   document.getElementById('moonIlum').textContent = `${m.ilum}% iluminada`;
   document.getElementById('moonAge').textContent  = `${m.age} días de edad`;
+
+  // Buscar la próxima Luna Nueva con el algoritmo preciso
+  const hoy = new Date();
+  const año = hoy.getUTCFullYear();
+  const mes = hoy.getUTCMonth() + 1;
+  const kBase = Math.floor((año - 2000) * 12.3685 + (mes - 1) * 1.0306) - 2;
+
+  let proxima = m.proximaNueva; // fallback
+  for (let k = kBase; k <= kBase + 6; k++){
+    const fecha = jdeADate(calcularFaseMeeus(k, 0));
+    if (fecha > hoy){ proxima = fecha; break; }
+  }
+
+  document.getElementById('moonRec').innerHTML =
+    `Próxima luna nueva: <span class="text-white font-bold">${fmt(proxima)}</span>`;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -688,97 +789,12 @@ function renderCalendario(){
 }
 
 /* ════════════════════════════════════════════════════════════
-   RENDER LUNA DEL MES — Algoritmo astronómico preciso (Meeus)
+   RENDER LUNA DEL MES (pestaña Luna) — algoritmo de Meeus
    ════════════════════════════════════════════════════════════ */
 function renderLunaMes(){
   const cont = document.getElementById('lunaContent');
   const hoy = new Date();
   const m = getMoonPhase(hoy);
-
-  const RAD = Math.PI / 180;
-
-  function calcularFase(k, tipo){
-    // tipo: 0 = Nueva, 1 = Cuarto Creciente, 2 = Llena, 3 = Cuarto Menguante
-    const T  = k / 1236.85;
-    const T2 = T * T;
-    const T3 = T2 * T;
-    const T4 = T3 * T;
-
-    let JDE = 2451550.09766 + 29.530588861 * k
-            + 0.00015437 * T2
-            - 0.000000150 * T3
-            + 0.00000000073 * T4;
-
-    const E  = 1 - 0.002516 * T - 0.0000074 * T2;
-    const M  = (2.5534    + 29.10535670 * k - 0.0000014  * T2 - 0.00000011  * T3) * RAD;
-    const Mp = (201.5643  + 385.81693528 * k + 0.0107582 * T2 + 0.00001238 * T3 - 0.000000058 * T4) * RAD;
-    const F  = (160.7108  + 390.67050284 * k - 0.0016118 * T2 - 0.00000227 * T3 + 0.000000011 * T4) * RAD;
-    const O  = (124.7746  - 1.56375588  * k + 0.0020672 * T2 + 0.00000215 * T3) * RAD;
-
-    if (tipo === 1 || tipo === 3) JDE += 0.25 * 29.530588861;
-    if (tipo === 2)               JDE += 0.5  * 29.530588861;
-
-    let c = 0;
-    if (tipo === 0 || tipo === 2){ // Nueva y Llena comparten correcciones
-      c += -0.40720 * Math.sin(Mp);
-      c +=  0.17241 * E * Math.sin(M);
-      c +=  0.01608 * Math.sin(2 * Mp);
-      c +=  0.01039 * Math.sin(2 * F);
-      c +=  0.00739 * E * Math.sin(Mp - M);
-      c += -0.00514 * E * Math.sin(Mp + M);
-      c +=  0.00208 * E * E * Math.sin(2 * M);
-      c += -0.00111 * Math.sin(Mp - 2 * F);
-      c += -0.00057 * Math.sin(Mp + 2 * F);
-      c +=  0.00056 * E * Math.sin(2 * Mp + M);
-      c += -0.00042 * Math.sin(3 * Mp);
-      c +=  0.00042 * E * Math.sin(M + 2 * F);
-      c +=  0.00038 * E * Math.sin(M - 2 * F);
-      c += -0.00024 * E * Math.sin(2 * Mp - M);
-      c += -0.00017 * Math.sin(O);
-      c += -0.00007 * Math.sin(Mp + 2 * M);
-      c +=  0.00004 * Math.sin(2 * Mp - 2 * F);
-      c +=  0.00004 * Math.sin(3 * M);
-      c +=  0.00003 * Math.sin(Mp + M - 2 * F);
-      c +=  0.00003 * Math.sin(2 * Mp + 2 * F);
-      c += -0.00003 * Math.sin(Mp + M + 2 * F);
-      c +=  0.00003 * Math.sin(Mp - M + 2 * F);
-      c += -0.00002 * Math.sin(Mp - M - 2 * F);
-      c += -0.00002 * Math.sin(3 * Mp + M);
-      c +=  0.00002 * Math.sin(4 * Mp);
-    } else { // Cuartos
-      c += -0.62801 * Math.sin(Mp);
-      c +=  0.17172 * E * Math.sin(M);
-      c += -0.01183 * E * Math.sin(Mp + M);
-      c +=  0.00862 * Math.sin(2 * Mp);
-      c +=  0.00804 * Math.sin(2 * F);
-      c +=  0.00454 * E * Math.sin(Mp - M);
-      c +=  0.00204 * E * E * Math.sin(2 * M);
-      c += -0.00180 * Math.sin(Mp - 2 * F);
-      c += -0.00070 * Math.sin(Mp + 2 * F);
-      c += -0.00040 * Math.sin(3 * Mp);
-      c += -0.00034 * E * Math.sin(2 * Mp - M);
-      c +=  0.00032 * E * Math.sin(M + 2 * F);
-      c +=  0.00032 * E * Math.sin(M - 2 * F);
-      c += -0.00028 * E * E * Math.sin(Mp + 2 * M);
-      c +=  0.00027 * E * Math.sin(2 * Mp + M);
-      c += -0.00017 * Math.sin(O);
-      c += -0.00005 * Math.sin(Mp - M - 2 * F);
-      c +=  0.00004 * Math.sin(2 * Mp + 2 * F);
-      c += -0.00004 * Math.sin(Mp + M + 2 * F);
-      c +=  0.00004 * Math.sin(Mp - 2 * M);
-      c +=  0.00003 * Math.sin(Mp + M - 2 * F);
-      c +=  0.00003 * Math.sin(3 * M);
-      c +=  0.00002 * Math.sin(2 * Mp - 2 * F);
-      c +=  0.00002 * Math.sin(Mp - M + 2 * F);
-      c += -0.00002 * Math.sin(3 * Mp + M);
-    }
-
-    return JDE + c;
-  }
-
-  function jdeADate(jde){
-    return new Date((jde - 2440587.5) * 86400000);
-  }
 
   const añoActual = hoy.getUTCFullYear();
   const mesActual = hoy.getUTCMonth() + 1;
@@ -787,16 +803,11 @@ function renderLunaMes(){
   const candidatos = [];
   for (let k = kBase; k <= kBase + 6; k++){
     for (let tipo = 0; tipo < 4; tipo++){
-      const jde = calcularFase(k, tipo);
-      const fecha = jdeADate(jde);
+      const fecha = jdeADate(calcularFaseMeeus(k, tipo));
       if (fecha > hoy){
         const emojis = ['🌑', '🌓', '🌕', '🌗'];
         const nombres = ['Luna Nueva', 'Cuarto Creciente', 'Luna Llena', 'Cuarto Menguante'];
-        candidatos.push({
-          fecha,
-          emoji: emojis[tipo],
-          nombre: nombres[tipo]
-        });
+        candidatos.push({ fecha, emoji: emojis[tipo], nombre: nombres[tipo] });
       }
     }
   }
