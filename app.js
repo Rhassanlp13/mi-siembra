@@ -782,13 +782,40 @@ function renderGuia(){
 }
 
 /* ════════════════════════════════════════════════════════════
-   SERVICE WORKER
+   SERVICE WORKER — con auto-actualización ⚡
    ════════════════════════════════════════════════════════════ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('✅ Service Worker registrado'))
+      .then(reg => {
+        console.log('✅ Service Worker registrado');
+
+        // Forzar comprobación de actualización cada vez que carga la app
+        reg.update();
+
+        // Si hay un SW nuevo esperando, activarlo inmediatamente
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Hay una nueva versión lista → activarla
+              newWorker.postMessage('SKIP_WAITING');
+              window.location.reload();
+            }
+          });
+        });
+      })
       .catch(err => console.warn('⚠️ Service Worker falló:', err));
+  });
+
+  // Escuchar cuando el SW toma el control para recargar
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }
 
