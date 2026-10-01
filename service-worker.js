@@ -1,16 +1,12 @@
 /* ════════════════════════════════════════════════════════════
    SERVICE WORKER — Mi Siembra
-   - Cache-first para archivos locales y CDN
-   - Network-first para Supabase (con fallback a caché)
-   - Soporte offline completo
    ════════════════════════════════════════════════════════════ */
 
-const VERSION = 'v4';
+const VERSION = 'v7';
 const CACHE_STATIC = `mi-siembra-static-${VERSION}`;
 const CACHE_CDN    = `mi-siembra-cdn-${VERSION}`;
 const CACHE_API    = `mi-siembra-api-${VERSION}`;
 
-// Archivos locales que se cachean al instalar
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -22,11 +18,9 @@ const STATIC_ASSETS = [
   './icon-512.png'
 ];
 
-/* ─── INSTALL: precachea los archivos base ─── */
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_STATIC).then((cache) => {
-      // addAll falla entero si UNO falla, así que usamos add() individual
       return Promise.all(
         STATIC_ASSETS.map(url =>
           cache.add(url).catch(err => {
@@ -36,11 +30,9 @@ self.addEventListener('install', (event) => {
       );
     })
   );
-  // Toma el control de inmediato sin esperar a que cierren las pestañas
   self.skipWaiting();
 });
 
-/* ─── ACTIVATE: limpia cachés viejas ─── */
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -54,25 +46,22 @@ self.addEventListener('activate', (event) => {
       )
     )
   );
-  // Toma el control de las pestañas abiertas
   self.clients.claim();
 });
 
-/* ─── FETCH: estrategia según el tipo de petición ─── */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Solo manejamos GET (POST/DELETE/OPTIONS van directo a la red)
   if (request.method !== 'GET') return;
 
-  // 1) Supabase → Network-first con fallback a caché
+  // Supabase → Network-first
   if (url.hostname.includes('supabase.co')) {
     event.respondWith(networkFirst(request, CACHE_API));
     return;
   }
 
-  // 2) CDN externos (Tailwind, Google Fonts) → Cache-first
+  // CDN de Tailwind → Cache-first (así funciona offline después de la primera carga)
   if (
     url.hostname.includes('tailwindcss.com') ||
     url.hostname.includes('googleapis.com') ||
@@ -83,41 +72,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3) Mismo origen (archivos locales) → Cache-first
+  // Mismo origen → Cache-first
   if (url.origin === self.location.origin) {
     event.respondWith(cacheFirst(request, CACHE_STATIC));
     return;
   }
 
-  // 4) Otros → red con fallback a caché runtime
   event.respondWith(
     fetch(request).catch(() => caches.match(request))
   );
 });
 
-/* ─── Estrategia: Cache-first ───
-   Si está en caché → devuelve
-   Si no → pide a la red y guarda para la próxima
-*/
 async function cacheFirst(request, cacheName){
   const cached = await caches.match(request, { ignoreSearch: true });
   if (cached) return cached;
 
   try {
     const response = await fetch(request);
-    // Guardar en caché si es una respuesta válida
-    if (response && response.status === 200 && response.type === 'basic') {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    } else if (response && response.status === 200) {
-      // Para recursos cross-origin (opaque/cors) igual los guardamos
+    if (response && response.status === 200) {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
     return response;
   } catch (err) {
     console.warn('[SW] cacheFirst falló:', request.url, err.message);
-    // Fallback: intenta servir el index.html si es una navegación
     if (request.mode === 'navigate') {
       const fallback = await caches.match('./index.html');
       if (fallback) return fallback;
@@ -130,9 +108,6 @@ async function cacheFirst(request, cacheName){
   }
 }
 
-/* ─── Estrategia: Network-first ───
-   Intenta red → si falla, usa caché
-*/
 async function networkFirst(request, cacheName){
   try {
     const response = await fetch(request);
@@ -153,7 +128,6 @@ async function networkFirst(request, cacheName){
   }
 }
 
-/* ─── Mensajes desde la app ─── */
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting();
