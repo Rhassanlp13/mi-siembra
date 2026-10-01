@@ -499,10 +499,13 @@ function renderMoonBar(){
   document.getElementById('moonIlum').textContent = `${fase.ilum}% iluminada`;
   document.getElementById('moonAge').textContent  = `${fase.edad} días de edad`;
 
-  const proxima = getProximasFases(10).find(f => f.Phase === 0);
+  // Buscar la próxima fase (la que venga después de hoy)
+  const proxima = getProximasFases(1)[0];
+
   if (proxima){
+    const nombres = ['Luna Nueva', 'Cuarto Creciente', 'Luna Llena', 'Cuarto Menguante'];
     document.getElementById('moonRec').innerHTML =
-      `Próxima luna nueva: <span class="text-white font-bold">${fmt(proxima.fecha)}</span>`;
+      `Próxima fase: <span class="text-white font-bold">${nombres[proxima.Phase]} · ${fmt(proxima.fecha)}</span>`;
   }
 }
 
