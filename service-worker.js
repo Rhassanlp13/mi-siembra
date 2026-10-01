@@ -6,7 +6,7 @@
    - Soporte offline completo
    ════════════════════════════════════════════════════════════ */
 
-const VERSION = 'v10';
+const VERSION = 'v11';
 const CACHE_STATIC = `mi-siembra-static-${VERSION}`;
 const CACHE_CDN    = `mi-siembra-cdn-${VERSION}`;
 const CACHE_API    = `mi-siembra-api-${VERSION}`;
