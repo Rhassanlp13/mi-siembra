@@ -4,14 +4,14 @@
    - Cache-first para CDN de Tailwind (para offline tras primera carga)
    - Network-first para Supabase
    - Soporte offline completo
+   - Notificaciones de fase lunar
    ════════════════════════════════════════════════════════════ */
 
-const VERSION = 'v14';
+const VERSION = 'v17';
 const CACHE_STATIC = `mi-siembra-static-${VERSION}`;
 const CACHE_CDN    = `mi-siembra-cdn-${VERSION}`;
 const CACHE_API    = `mi-siembra-api-${VERSION}`;
 
-// Archivos locales que se cachean al instalar
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -27,7 +27,6 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_STATIC).then((cache) => {
-      // add() individual para que un fallo no rompa todo el install
       return Promise.all(
         STATIC_ASSETS.map(url =>
           cache.add(url).catch(err => {
@@ -37,7 +36,6 @@ self.addEventListener('install', (event) => {
       );
     })
   );
-  // Activar el SW nuevo inmediatamente sin esperar
   self.skipWaiting();
 });
 
@@ -55,7 +53,6 @@ self.addEventListener('activate', (event) => {
       )
     )
   );
-  // Tomar el control de todas las pestañas abiertas
   self.clients.claim();
 });
 
@@ -64,7 +61,6 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Solo manejamos GET (POST/DELETE/OPTIONS van directo a la red)
   if (request.method !== 'GET') return;
 
   // 1) Supabase → Network-first con fallback a caché
@@ -96,17 +92,13 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-/* ─── Estrategia: Cache-first ───
-   Si está en caché → devuelve
-   Si no → pide a la red y guarda para la próxima
-*/
+/* ─── Estrategia: Cache-first ─── */
 async function cacheFirst(request, cacheName){
   const cached = await caches.match(request, { ignoreSearch: true });
   if (cached) return cached;
 
   try {
     const response = await fetch(request);
-    // Guardar en caché si es una respuesta válida
     if (response && response.status === 200) {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
@@ -114,7 +106,6 @@ async function cacheFirst(request, cacheName){
     return response;
   } catch (err) {
     console.warn('[SW] cacheFirst falló:', request.url, err.message);
-    // Fallback: si es navegación, servir el index.html cacheado
     if (request.mode === 'navigate') {
       const fallback = await caches.match('./index.html');
       if (fallback) return fallback;
@@ -127,9 +118,7 @@ async function cacheFirst(request, cacheName){
   }
 }
 
-/* ─── Estrategia: Network-first ───
-   Intenta red → si falla, usa caché
-*/
+/* ─── Estrategia: Network-first ─── */
 async function networkFirst(request, cacheName){
   try {
     const response = await fetch(request);
@@ -160,4 +149,21 @@ self.addEventListener('message', (event) => {
       console.log('[SW] Caché de API borrada');
     });
   }
+});
+
+/* ─── Click en notificación ─── */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('./');
+      }
+    })
+  );
 });
