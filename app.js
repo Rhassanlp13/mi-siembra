@@ -11,7 +11,7 @@ const SB_HEADERS = {
 };
 
 /* ════════════════════════════════════════════════════════════
-   FASES LUNARES 2026 (datos reales de la API)
+   FASES LUNARES 2026
    Phase: 0=Nueva · 1=Cuarto Creciente · 2=Llena · 3=Cuarto Menguante
    ════════════════════════════════════════════════════════════ */
 const FASES_LUNARES = [
@@ -74,21 +74,17 @@ function getFaseActual(){
   const ahora = Date.now();
   const fases = FASES_LUNARES.map(f => ({ ...f, fecha: new Date(f.Date) }));
 
-  // Calcular edad (días desde la última Luna Nueva)
   const ultimaNueva = fases.filter(f => f.Phase === 0 && f.fecha.getTime() <= ahora).pop();
   if (!ultimaNueva) return { nombre: 'nueva', icono: '🌑', edad: 0, ilum: 0 };
 
   const edad = (ahora - ultimaNueva.fecha.getTime()) / 86400000;
 
-  // Iluminación según la edad
   const synodic = 29.530588853;
   const phase = (edad % synodic) / synodic;
   const ilum = Math.round((1 - Math.cos(2 * Math.PI * phase)) / 2 * 100);
 
-  // ¿Está creciendo o menguando?
   const creciendo = phase < 0.5;
 
-  // Nombre según iluminación real
   let nombre, icono;
   if (ilum < 3) {
     nombre = 'nueva'; icono = '🌑';
@@ -499,9 +495,7 @@ function renderMoonBar(){
   document.getElementById('moonIlum').textContent = `${fase.ilum}% iluminada`;
   document.getElementById('moonAge').textContent  = `${fase.edad} días de edad`;
 
-  // Buscar la próxima fase (la que venga después de hoy)
   const proxima = getProximasFases(1)[0];
-
   if (proxima){
     const nombres = ['Luna Nueva', 'Cuarto Creciente', 'Luna Llena', 'Cuarto Menguante'];
     document.getElementById('moonRec').innerHTML =
@@ -850,6 +844,90 @@ function renderGuia(){
 }
 
 /* ════════════════════════════════════════════════════════════
+   NOTIFICACIONES DE CAMBIO DE FASE LUNAR
+   ════════════════════════════════════════════════════════════ */
+function initNotificaciones(){
+  const btn = document.getElementById('btnNotify');
+  if (!btn) return;
+
+  function actualizarIcono(){
+    if (!('Notification' in window)) {
+      btn.style.display = 'none';
+      return;
+    }
+    const activo = Notification.permission === 'granted'
+                && localStorage.getItem('notif_activas') === '1';
+    btn.style.opacity = activo ? '1' : '.5';
+    btn.title = activo ? 'Notificaciones activas' : 'Activar notificaciones';
+  }
+
+  btn.addEventListener('click', async () => {
+    if (!('Notification' in window)) {
+      mostrarToast('❌ Tu navegador no soporta notificaciones', 'error');
+      return;
+    }
+
+    if (Notification.permission === 'denied') {
+      mostrarToast('❌ Notificaciones bloqueadas. Actívalas en ajustes del navegador', 'error');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      const activo = localStorage.getItem('notif_activas') === '1';
+      localStorage.setItem('notif_activas', activo ? '0' : '1');
+      mostrarToast(activo ? '🔕 Notificaciones desactivadas' : '🔔 Notificaciones activadas');
+      actualizarIcono();
+      return;
+    }
+
+    const permiso = await Notification.requestPermission();
+    if (permiso === 'granted') {
+      localStorage.setItem('notif_activas', '1');
+      mostrarToast('✅ Notificaciones activadas');
+      actualizarIcono();
+      setTimeout(() => notificarCambioFase(getFaseActual(), true), 800);
+    } else {
+      mostrarToast('❌ Permiso denegado', 'error');
+    }
+  });
+
+  actualizarIcono();
+}
+
+function notificarCambioFase(faseActual, forzar = false){
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  if (localStorage.getItem('notif_activas') !== '1') return;
+
+  const notifKey = 'ultima_fase_notificada';
+  const ultimaFase = localStorage.getItem(notifKey);
+
+  if (!forzar && ultimaFase === faseActual.nombre) return;
+
+  const titulo = `🌙 Luna ${faseActual.nombre}`;
+  const cuerpo = `${faseActual.ilum}% iluminada · ${faseActual.edad} días de edad`;
+
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(titulo, {
+          body: cuerpo,
+          icon: './icon-192.png',
+          badge: './icon-192.png',
+          tag: 'fase-lunar',
+          renotify: true
+        });
+      });
+    } else {
+      new Notification(titulo, { body: cuerpo, icon: './icon-192.png' });
+    }
+    localStorage.setItem(notifKey, faseActual.nombre);
+  } catch(e){
+    console.warn('Error al notificar:', e);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
    SERVICE WORKER — con auto-actualización
    ════════════════════════════════════════════════════════════ */
 if ('serviceWorker' in navigator) {
@@ -935,4 +1013,17 @@ window.addEventListener('offline', () => {
 initFormulario();
 renderMoonBar();
 renderSiembras();
+initNotificaciones();
 setInterval(renderMoonBar, 3600000);
+
+// Revisar cambio de fase cada 30 minutos
+setInterval(() => {
+  notificarCambioFase(getFaseActual());
+}, 30 * 60 * 1000);
+
+// También revisar al volver a la app después de un rato
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    notificarCambioFase(getFaseActual());
+  }
+});
