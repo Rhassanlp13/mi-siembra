@@ -133,15 +133,15 @@ function contarPendientes(){
 /* ════════════════════════════════════════════════════════════
    SINCRONIZACIÓN CON SUPABASE
    ════════════════════════════════════════════════════════════ */
-async function sincronizar(){
+async function sincronizar(silencioso = false){
   if (!navigator.onLine){
-    mostrarToast('📡 Sin conexión — solo tienes datos locales', 'error');
+    if (!silencioso) mostrarToast('📡 Sin conexión — solo tienes datos locales', 'error');
     return;
   }
 
   const btn = document.getElementById('btnRefresh');
   if (btn){ btn.classList.add('spinning'); btn.disabled = true; }
-  mostrarToast('🔄 Sincronizando…');
+  if (!silencioso) mostrarToast('🔄 Sincronizando…');
 
   try {
     let lista = cargarSiembras();
@@ -208,11 +208,11 @@ async function sincronizar(){
 
     guardarSiembras(lista);
     renderSiembras();
-    mostrarToast('✅ Sincronizado con la nube');
+    if (!silencioso) mostrarToast('✅ Sincronizado con la nube');
 
   } catch (err){
     console.error(err);
-    mostrarToast('⚠️ Error al sincronizar', 'error');
+    if (!silencioso) mostrarToast('⚠️ Error al sincronizar', 'error');
   } finally {
     if (btn){ btn.classList.remove('spinning'); btn.disabled = false; }
   }
@@ -664,6 +664,11 @@ function eliminar(idx){
   }
   guardarSiembras(lista);
   renderSiembras();
+
+  // Auto-sincronizar si estamos online
+  if (navigator.onLine){
+    setTimeout(() => sincronizar(true), 500);
+  }
 }
 window.eliminar = eliminar;
 
@@ -711,6 +716,11 @@ function initFormulario(){
     document.getElementById('notas').value = '';
     renderSiembras();
     mostrarToast('✅ Guardado en el móvil');
+
+    // Auto-sincronizar si estamos online
+    if (navigator.onLine){
+      setTimeout(() => sincronizar(true), 500);
+    }
   });
 
   document.getElementById('btnDemo').addEventListener('click', () => {
@@ -722,6 +732,10 @@ function initFormulario(){
     });
     guardarSiembras(lista);
     renderSiembras();
+
+    if (navigator.onLine){
+      setTimeout(() => sincronizar(true), 500);
+    }
   });
 }
 
@@ -985,7 +999,7 @@ function actualizarEstadoConexion(){
 
 function attachRefreshListener(){
   const btn = document.getElementById('btnRefresh');
-  if (btn) btn.addEventListener('click', sincronizar);
+  if (btn) btn.addEventListener('click', () => sincronizar(false));
 }
 
 if (document.readyState === 'loading'){
@@ -998,10 +1012,19 @@ if (document.readyState === 'loading'){
   actualizarEstadoConexion();
 }
 
+/* ════════════════════════════════════════════════════════════
+   EVENTOS DE CONEXIÓN
+   ════════════════════════════════════════════════════════════ */
 window.addEventListener('online', () => {
   actualizarEstadoConexion();
   mostrarToast('🌐 Conexión restaurada');
+
+  // Auto-sincronizar si hay pendientes
+  if (contarPendientes() > 0){
+    setTimeout(() => sincronizar(true), 1000);
+  }
 });
+
 window.addEventListener('offline', () => {
   actualizarEstadoConexion();
   mostrarToast('📡 Sin conexión', 'error');
@@ -1016,14 +1039,32 @@ renderSiembras();
 initNotificaciones();
 setInterval(renderMoonBar, 3600000);
 
-// Revisar cambio de fase cada 30 minutos
+// ─── Auto-sincronización ───
+// 1) Sincronizar al abrir la app si hay pendientes y hay conexión
+setTimeout(() => {
+  if (navigator.onLine && contarPendientes() > 0){
+    sincronizar(true);
+  }
+}, 2000);
+
+// 2) Sincronizar cada 5 minutos si hay pendientes
+setInterval(() => {
+  if (navigator.onLine && contarPendientes() > 0){
+    sincronizar(true);
+  }
+}, 5 * 60 * 1000);
+
+// 3) Revisar cambio de fase cada 30 minutos
 setInterval(() => {
   notificarCambioFase(getFaseActual());
 }, 30 * 60 * 1000);
 
-// También revisar al volver a la app después de un rato
+// 4) Al volver a la app, revisar fase y sincronizar
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     notificarCambioFase(getFaseActual());
+    if (navigator.onLine && contarPendientes() > 0){
+      setTimeout(() => sincronizar(true), 1000);
+    }
   }
 });
