@@ -66,9 +66,6 @@ const FASES_LUNARES = [
   {"Date":"2026-12-30T18:59:00Z","Phase":3}
 ];
 
-/* ════════════════════════════════════════════════════════════
-   FASE LUNAR ACTUAL
-   ════════════════════════════════════════════════════════════ */
 function getFaseActual(){
   const ahora = Date.now();
   const fases = FASES_LUNARES.map(f => ({ ...f, fecha: new Date(f.Date) }));
@@ -451,19 +448,14 @@ let filtroActual = 'todas';
 
 function calcularStats(lista){
   let enCurso = 0, listas = 0, proximas = 0;
-
   for (const s of lista){
     const e = calcularEstado(s);
-    if (e.esCosecha) {
-      listas++;
-    } else {
+    if (e.esCosecha) listas++;
+    else {
       enCurso++;
-      if (e.diasParaCosecha >= 0 && e.diasParaCosecha <= 7){
-        proximas++;
-      }
+      if (e.diasParaCosecha >= 0 && e.diasParaCosecha <= 7) proximas++;
     }
   }
-
   return { enCurso, listas, proximas, total: lista.length };
 }
 
@@ -482,9 +474,7 @@ function renderFiltros(lista){
   if (!cont) return;
 
   const cultivos = {};
-  for (const s of lista){
-    cultivos[s.cultivo] = (cultivos[s.cultivo] || 0) + 1;
-  }
+  for (const s of lista) cultivos[s.cultivo] = (cultivos[s.cultivo] || 0) + 1;
 
   const filtros = [
     { id: 'todas',     label: 'Todas',    count: lista.length },
@@ -493,11 +483,7 @@ function renderFiltros(lista){
   ];
 
   Object.entries(cultivos).forEach(([key, count]) => {
-    filtros.push({
-      id: 'cultivo-' + key,
-      label: CULTIVOS[key].nombre,
-      count: count
-    });
+    filtros.push({ id: 'cultivo-' + key, label: CULTIVOS[key].nombre, count });
   });
 
   cont.innerHTML = filtros.map(f => {
@@ -590,18 +576,16 @@ function renderMoonBar(){
 }
 
 /* ════════════════════════════════════════════════════════════
-   RENDER SIEMBRAS
+   RENDER SIEMBRAS (tarjetas compactas)
    ════════════════════════════════════════════════════════════ */
 function renderSiembras(){
   const listaCompleta = cargarSiembras();
   const cont = document.getElementById('listaSiembras');
   const contador = document.getElementById('contador');
 
-  // Dashboard y filtros (siempre sobre la lista completa)
   renderStats(listaCompleta);
   renderFiltros(listaCompleta);
 
-  // Lista filtrada
   const lista = filtrarSiembras(listaCompleta);
   contador.textContent = lista.length;
 
@@ -639,126 +623,193 @@ function renderSiembras(){
     return;
   }
 
-  const m = getFaseActual();
-
   cont.innerHTML = lista.map((s) => {
     const e = calcularEstado(s);
-    const rec = getRecomendacion(m.nombre, e.c.tipo);
-    const p = PALETA[e.c.color];
-
-    // Necesitamos el índice real en la lista completa para eliminar
     const idxReal = listaCompleta.indexOf(s);
 
-    const recBlock = `
-      <div class="mt-3 flex items-start gap-3 rounded-2xl ${rec.fav ? 'bg-white/[.03] border-white/[.06]' : 'bg-red-500/[.08] border-red-500/25'} border px-3.5 py-3">
-        <span class="text-lg leading-none mt-0.5 shrink-0">${rec.fav ? '✅' : '⚠️'}</span>
-        <div class="text-[12.5px] leading-snug">
-          <span class="font-bold ${rec.fav ? 'text-slate-200' : 'text-red-300'}">Luna ${m.nombre}:</span>
-          <span class="${rec.fav ? 'text-slate-400' : 'text-red-200/80'}"> ${rec.txt}</span>
-        </div>
-      </div>`;
-
-    const cosechaBlock = e.esCosecha
-      ? `<div class="mt-3 rounded-2xl bg-gradient-to-r from-orange-500/20 via-amber-500/15 to-orange-500/20 border border-orange-400/30 px-4 py-3.5 flex items-center gap-3.5 animate-pulse-soft">
-           <span class="text-2xl">🎉</span>
-           <div>
-             <p class="font-extrabold text-orange-200 text-sm">¡Lista para cosechar!</p>
-             <p class="text-xs text-orange-300/80">${e.dds} días desde la siembra</p>
-           </div>
-         </div>`
-      : `<div class="grid grid-cols-2 gap-2.5 mt-3">
-           <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
-             <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Próxima fase</p>
-             <p class="text-[13px] font-bold text-slate-200 truncate mt-1">${e.proxima ? e.proxima.nombre : '—'}</p>
-           </div>
-           <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
-             <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Fecha</p>
-             <p class="text-[13px] font-bold text-slate-200 mt-1">${e.fechaProxima ? fmtCorto(e.fechaProxima) : '—'}</p>
-           </div>
-           <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
-             <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Cosecha</p>
-             <p class="text-[13px] font-bold text-slate-200 mt-1">${fmtCorto(e.fechaCosecha)}</p>
-           </div>
-           <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
-             <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Faltan</p>
-             <p class="text-[13px] font-bold text-slate-200 mt-1">${e.diasParaCosecha > 0 ? e.diasParaCosecha + ' días' : 'Hoy'}</p>
-           </div>
-         </div>`;
-
-    const iconoCultivo = e.c.nombre === 'Yuca'    ? '🥔'
-                       : e.c.nombre === 'Frijol'  ? '🫘'
-                       : e.c.nombre === 'Boniato' ? '🍠'
+    const iconoCultivo = s.cultivo === 'yuca'    ? '🥔'
+                       : s.cultivo === 'frijol'  ? '🫘'
+                       : s.cultivo === 'boniato' ? '🍠'
                        : '🍌';
 
-    const badgePendiente = s._pendiente
-      ? `<span class="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded ml-1.5">●</span>`
+    const pendienteBadge = s._pendiente
+      ? `<span class="card-pendiente-badge"></span>`
       : '';
 
+    const color = PALETA[e.c.color];
+
     return `
-      <article class="panel panel-accent group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover animate-slide-up">
-        <div class="flex items-start justify-between gap-3 p-5 pb-3">
-          <div class="min-w-0 flex items-center gap-3">
-            <div class="w-11 h-11 rounded-2xl ${p.iconBox} border flex items-center justify-center text-xl shrink-0 shadow-inner-ring">
-              ${iconoCultivo}
-            </div>
-            <div class="min-w-0">
-              <h3 class="text-[15px] font-extrabold text-slate-100 tracking-tight">${e.c.nombre}${badgePendiente}</h3>
-              <p class="text-[11px] text-slate-500 mt-0.5">
-                <span class="badge ${p.badge}">${s.variedad}</span>
-              </p>
-            </div>
-          </div>
-          <button onclick="eliminar(${idxReal})" title="Eliminar"
-            class="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/20 shrink-0">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
+      <button class="card-siembra animate-slide-up" data-cultivo="${s.cultivo}" onclick="abrirDetalle(${idxReal})">
+        ${pendienteBadge}
+        <div class="flex items-start justify-between">
+          <div class="emoji-cultivo">${iconoCultivo}</div>
+          <span class="badge ${color.badge}">${s.variedad}</span>
         </div>
 
-        <p class="px-5 pb-3 text-[11px] text-slate-500 flex items-center gap-1.5">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          Sembrado el ${fmt(e.fSiembra)}
-        </p>
-
-        <div class="mx-5 rounded-2xl ${p.visualBg} border p-4 flex items-center gap-4">
-          <div class="relative shrink-0">
-            <div class="text-5xl leading-none drop-shadow-lg">${e.fase.emoji}</div>
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="text-[9.5px] uppercase tracking-[.18em] font-extrabold ${p.visualText} opacity-70">Fase actual</p>
-            <p class="text-base font-extrabold ${p.visualText} leading-tight mt-0.5">${e.esCosecha ? 'Lista para cosecha' : e.fase.nombre}</p>
-            <p class="text-[12.5px] text-slate-400 mt-1 leading-snug">${e.fase.desc}</p>
-            <span class="inline-flex items-center gap-1 mt-2.5 text-[11px] font-bold bg-white/[.06] text-slate-200 px-2.5 py-1 rounded-full border border-white/[.08]">
-              📏 ${e.fase.tamano}
-            </span>
-          </div>
+        <div class="mt-3">
+          <h3 class="text-[15px] font-extrabold text-slate-100 tracking-tight leading-tight">${e.c.nombre}</h3>
+          <p class="text-[10.5px] text-slate-500 mt-0.5">Sembrado el ${fmtCorto(e.fSiembra)}</p>
         </div>
 
-        <div class="px-5 mt-4">
-          <div class="flex items-end justify-between mb-2">
-            <span class="text-[11px] font-bold text-slate-500">
-              Día <span class="text-slate-300 font-mono">${e.dds}</span> de <span class="text-slate-400 font-mono">${e.c.ciclo}</span>
-            </span>
-            <span class="text-base font-extrabold ${p.visualText} font-mono">${e.progreso}%</span>
+        <div class="mt-3 flex-1 flex flex-col justify-end">
+          <div class="flex items-baseline justify-between mb-1.5">
+            <span class="text-[10.5px] font-bold text-slate-500">Día <span class="text-slate-300 font-mono">${e.dds}</span></span>
+            <span class="text-[11px] font-extrabold ${color.visualText} font-mono">${e.progreso}%</span>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill bg-gradient-to-r ${p.bar}" style="width:${e.progreso}%"></div>
+          <div class="progress-track-sm">
+            <div class="progress-fill bg-gradient-to-r ${color.bar}" style="width:${e.progreso}%"></div>
           </div>
+          <p class="text-[10.5px] mt-2 ${color.visualText} font-bold truncate">
+            ${e.esCosecha ? '🎉 Lista para cosechar' : e.fase.emoji + ' ' + e.fase.nombre}
+          </p>
         </div>
-
-        <div class="px-5">
-          ${cosechaBlock}
-          ${recBlock}
-        </div>
-        <div class="h-5"></div>
-      </article>
+      </button>
     `;
   }).join('');
 }
 
+/* ════════════════════════════════════════════════════════════
+   MODAL DE DETALLE
+   ════════════════════════════════════════════════════════════ */
+function abrirDetalle(idx){
+  const lista = cargarSiembras();
+  const s = lista[idx];
+  if (!s) return;
+
+  const e = calcularEstado(s);
+  const m = getFaseActual();
+  const rec = getRecomendacion(m.nombre, e.c.tipo);
+  const color = PALETA[e.c.color];
+
+  const iconoCultivo = s.cultivo === 'yuca'    ? '🥔'
+                     : s.cultivo === 'frijol'  ? '🫘'
+                     : s.cultivo === 'boniato' ? '🍠'
+                     : '🍌';
+
+  const recBlock = `
+    <div class="mt-3 flex items-start gap-3 rounded-2xl ${rec.fav ? 'bg-white/[.03] border-white/[.06]' : 'bg-red-500/[.08] border-red-500/25'} border px-3.5 py-3">
+      <span class="text-lg leading-none mt-0.5 shrink-0">${rec.fav ? '✅' : '⚠️'}</span>
+      <div class="text-[12.5px] leading-snug">
+        <span class="font-bold ${rec.fav ? 'text-slate-200' : 'text-red-300'}">Luna ${m.nombre}:</span>
+        <span class="${rec.fav ? 'text-slate-400' : 'text-red-200/80'}"> ${rec.txt}</span>
+      </div>
+    </div>`;
+
+  const cosechaBlock = e.esCosecha
+    ? `<div class="mt-3 rounded-2xl bg-gradient-to-r from-orange-500/20 via-amber-500/15 to-orange-500/20 border border-orange-400/30 px-4 py-3.5 flex items-center gap-3.5 animate-pulse-soft">
+         <span class="text-2xl">🎉</span>
+         <div>
+           <p class="font-extrabold text-orange-200 text-sm">¡Lista para cosechar!</p>
+           <p class="text-xs text-orange-300/80">${e.dds} días desde la siembra</p>
+         </div>
+       </div>`
+    : `<div class="grid grid-cols-2 gap-2.5 mt-3">
+         <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
+           <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Próxima fase</p>
+           <p class="text-[13px] font-bold text-slate-200 truncate mt-1">${e.proxima ? e.proxima.nombre : '—'}</p>
+         </div>
+         <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
+           <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Fecha</p>
+           <p class="text-[13px] font-bold text-slate-200 mt-1">${e.fechaProxima ? fmtCorto(e.fechaProxima) : '—'}</p>
+         </div>
+         <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
+           <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Cosecha</p>
+           <p class="text-[13px] font-bold text-slate-200 mt-1">${fmtCorto(e.fechaCosecha)}</p>
+         </div>
+         <div class="rounded-xl bg-white/[.03] border border-white/[.06] px-3 py-2.5">
+           <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500">Faltan</p>
+           <p class="text-[13px] font-bold text-slate-200 mt-1">${e.diasParaCosecha > 0 ? e.diasParaCosecha + ' días' : 'Hoy'}</p>
+         </div>
+       </div>`;
+
+  const notasBlock = s.notas
+    ? `<div class="mt-3 rounded-xl bg-white/[.03] border border-white/[.06] px-3.5 py-2.5">
+         <p class="text-[9.5px] uppercase tracking-[.12em] font-bold text-slate-500 mb-1">Notas</p>
+         <p class="text-[12.5px] text-slate-300 italic">"${s.notas}"</p>
+       </div>`
+    : '';
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="flex items-center gap-3 mb-4 pr-10">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-3xl shrink-0 border border-white/[.08]">
+        ${iconoCultivo}
+      </div>
+      <div class="min-w-0">
+        <h2 class="text-lg font-extrabold text-slate-100 tracking-tight leading-tight">${e.c.nombre}</h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">
+          <span class="badge ${color.badge}">${s.variedad}</span>
+        </p>
+      </div>
+    </div>
+
+    <p class="text-[11.5px] text-slate-500 mb-3 flex items-center gap-1.5">
+      <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      Sembrado el ${fmt(e.fSiembra)}
+    </p>
+
+    <div class="rounded-2xl ${color.visualBg} border p-4 flex items-center gap-4">
+      <div class="relative shrink-0">
+        <div class="text-5xl leading-none drop-shadow-lg">${e.fase.emoji}</div>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[9.5px] uppercase tracking-[.18em] font-extrabold ${color.visualText} opacity-70">Fase actual</p>
+        <p class="text-base font-extrabold ${color.visualText} leading-tight mt-0.5">${e.esCosecha ? 'Lista para cosecha' : e.fase.nombre}</p>
+        <p class="text-[12.5px] text-slate-400 mt-1 leading-snug">${e.fase.desc}</p>
+        <span class="inline-flex items-center gap-1 mt-2.5 text-[11px] font-bold bg-white/[.06] text-slate-200 px-2.5 py-1 rounded-full border border-white/[.08]">
+          📏 ${e.fase.tamano}
+        </span>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="flex items-end justify-between mb-2">
+        <span class="text-[11px] font-bold text-slate-500">
+          Día <span class="text-slate-300 font-mono">${e.dds}</span> de <span class="text-slate-400 font-mono">${e.c.ciclo}</span>
+        </span>
+        <span class="text-base font-extrabold ${color.visualText} font-mono">${e.progreso}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill bg-gradient-to-r ${color.bar}" style="width:${e.progreso}%"></div>
+      </div>
+    </div>
+
+    ${cosechaBlock}
+    ${recBlock}
+    ${notasBlock}
+
+    <button onclick="cerrarDetalle(); eliminar(${idx})"
+      class="mt-5 w-full py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 font-bold text-[13px] hover:bg-red-500/20 transition flex items-center justify-center gap-2">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+      Eliminar siembra
+    </button>
+  `;
+
+  document.getElementById('detalleModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarDetalle(event){
+  if (event && event.target && event.target.id !== 'detalleModal') return;
+  document.getElementById('detalleModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+window.abrirDetalle = abrirDetalle;
+window.cerrarDetalle = cerrarDetalle;
+
+/* Cerrar con tecla ESC */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape'){
+    cerrarDetalle();
+  }
+});
+
+/* ════════════════════════════════════════════════════════════
+   ELIMINAR
+   ════════════════════════════════════════════════════════════ */
 function eliminar(idx){
   if (!confirm('¿Eliminar esta siembra?')) return;
   const lista = cargarSiembras();
@@ -887,9 +938,6 @@ function renderCalendario(){
     </div>`;
 }
 
-/* ════════════════════════════════════════════════════════════
-   RENDER LUNA DEL MES (pestaña Luna)
-   ════════════════════════════════════════════════════════════ */
 function renderLunaMes(){
   const cont = document.getElementById('lunaContent');
   const fase = getFaseActual();
@@ -964,7 +1012,7 @@ function renderGuia(){
 }
 
 /* ════════════════════════════════════════════════════════════
-   NOTIFICACIONES DE CAMBIO DE FASE LUNAR
+   NOTIFICACIONES
    ════════════════════════════════════════════════════════════ */
 function initNotificaciones(){
   const btn = document.getElementById('btnNotify');
@@ -986,20 +1034,17 @@ function initNotificaciones(){
       mostrarToast('❌ Tu navegador no soporta notificaciones', 'error');
       return;
     }
-
     if (Notification.permission === 'denied') {
-      mostrarToast('❌ Notificaciones bloqueadas. Actívalas en ajustes del navegador', 'error');
+      mostrarToast('❌ Notificaciones bloqueadas', 'error');
       return;
     }
-
     if (Notification.permission === 'granted') {
       const activo = localStorage.getItem('notif_activas') === '1';
       localStorage.setItem('notif_activas', activo ? '0' : '1');
-      mostrarToast(activo ? '🔕 Notificaciones desactivadas' : '🔔 Notificaciones activadas');
+      mostrarToast(activo ? '🔕 Desactivadas' : '🔔 Activadas');
       actualizarIcono();
       return;
     }
-
     const permiso = await Notification.requestPermission();
     if (permiso === 'granted') {
       localStorage.setItem('notif_activas', '1');
@@ -1021,7 +1066,6 @@ function notificarCambioFase(faseActual, forzar = false){
 
   const notifKey = 'ultima_fase_notificada';
   const ultimaFase = localStorage.getItem(notifKey);
-
   if (!forzar && ultimaFase === faseActual.nombre) return;
 
   const titulo = `🌙 Luna ${faseActual.nombre}`;
@@ -1048,7 +1092,7 @@ function notificarCambioFase(faseActual, forzar = false){
 }
 
 /* ════════════════════════════════════════════════════════════
-   SERVICE WORKER — con auto-actualización
+   SERVICE WORKER
    ════════════════════════════════════════════════════════════ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -1056,7 +1100,6 @@ if ('serviceWorker' in navigator) {
       .then(reg => {
         console.log('✅ Service Worker registrado');
         reg.update();
-
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
@@ -1081,7 +1124,7 @@ if ('serviceWorker' in navigator) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   BOTÓN REFRESH + ESTADO ONLINE
+   CONEXIÓN
    ════════════════════════════════════════════════════════════ */
 function actualizarEstadoConexion(){
   const online = navigator.onLine;
@@ -1140,26 +1183,22 @@ renderSiembras();
 initNotificaciones();
 setInterval(renderMoonBar, 3600000);
 
-// Auto-sincronización al abrir la app
 setTimeout(() => {
   if (navigator.onLine && contarPendientes() > 0){
     sincronizar(true);
   }
 }, 2000);
 
-// Auto-sincronización cada 5 minutos
 setInterval(() => {
   if (navigator.onLine && contarPendientes() > 0){
     sincronizar(true);
   }
 }, 5 * 60 * 1000);
 
-// Revisar cambio de fase cada 30 minutos
 setInterval(() => {
   notificarCambioFase(getFaseActual());
 }, 30 * 60 * 1000);
 
-// Al volver a la app, revisar fase y sincronizar
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     notificarCambioFase(getFaseActual());

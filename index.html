@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>🌱 Mi Siembra — Pilón, Granma</title>
 
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#080d17">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,10 +13,8 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
 
-  <!-- Tailwind LOCAL -->
   <script src="tailwind.js"></script>
 
-  <!-- Configuración de Tailwind -->
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -68,7 +65,6 @@
     }
   </script>
 
-  <!-- Estilos propios -->
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -217,7 +213,7 @@
       </section>
 
       <section>
-        <!-- Dashboard de estadísticas -->
+        <!-- Dashboard -->
         <div id="statsPanel" class="grid grid-cols-3 gap-2.5 mb-4">
           <div class="panel rounded-2xl p-3 text-center">
             <div class="text-2xl font-extrabold text-slate-100" id="statEnCurso">0</div>
@@ -243,7 +239,9 @@
           </h2>
           <span id="lastUpdate" class="text-[10px] text-slate-500"></span>
         </div>
-        <div id="listaSiembras" class="grid gap-4"></div>
+
+        <!-- Grid de tarjetas compactas -->
+        <div id="listaSiembras" class="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3"></div>
       </section>
     </div>
 
@@ -280,6 +278,19 @@
     Hecho con 🌱 para los campos de Pilón · Fase lunar calculada astronómicamente
   </footer>
 
+</div>
+
+<!-- MODAL DE DETALLE -->
+<div id="detalleModal" class="modal-overlay hidden" onclick="cerrarDetalle(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="cerrarDetalle()" aria-label="Cerrar">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+    <div id="modalBody"></div>
+  </div>
 </div>
 
 <!-- BARRA DE NAVEGACIÓN INFERIOR -->
