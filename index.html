@@ -217,6 +217,25 @@
       </section>
 
       <section>
+        <!-- Dashboard de estadísticas -->
+        <div id="statsPanel" class="grid grid-cols-3 gap-2.5 mb-4">
+          <div class="panel rounded-2xl p-3 text-center">
+            <div class="text-2xl font-extrabold text-slate-100" id="statEnCurso">0</div>
+            <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mt-0.5">En curso</div>
+          </div>
+          <div class="panel rounded-2xl p-3 text-center">
+            <div class="text-2xl font-extrabold text-orange-300" id="statListas">0</div>
+            <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mt-0.5">Listas</div>
+          </div>
+          <div class="panel rounded-2xl p-3 text-center">
+            <div class="text-2xl font-extrabold text-amber-300" id="statProximas">0</div>
+            <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 mt-0.5">Próximas</div>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div id="filtros" class="flex gap-1.5 overflow-x-auto pb-3 mb-2 px-1"></div>
+
         <div class="flex items-end justify-between gap-3 mb-4 px-1">
           <h2 class="text-base font-extrabold text-slate-100 tracking-tight flex items-center gap-2.5">
             <span>🌾</span> Mis siembras

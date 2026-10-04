@@ -12,7 +12,6 @@ const SB_HEADERS = {
 
 /* ════════════════════════════════════════════════════════════
    FASES LUNARES 2026
-   Phase: 0=Nueva · 1=Cuarto Creciente · 2=Llena · 3=Cuarto Menguante
    ════════════════════════════════════════════════════════════ */
 const FASES_LUNARES = [
   {"Date":"2026-01-03T10:03:00Z","Phase":2},
@@ -68,7 +67,7 @@ const FASES_LUNARES = [
 ];
 
 /* ════════════════════════════════════════════════════════════
-   FASE LUNAR ACTUAL — basada en iluminación real
+   FASE LUNAR ACTUAL
    ════════════════════════════════════════════════════════════ */
 function getFaseActual(){
   const ahora = Date.now();
@@ -445,6 +444,93 @@ function calcularEstado(s){
   return { c, dds, progreso, fase, proxima, fechaProxima, fechaCosecha, diasParaCosecha, esCosecha, fSiembra };
 }
 
+/* ════════════════════════════════════════════════════════════
+   DASHBOARD Y FILTROS
+   ════════════════════════════════════════════════════════════ */
+let filtroActual = 'todas';
+
+function calcularStats(lista){
+  let enCurso = 0, listas = 0, proximas = 0;
+
+  for (const s of lista){
+    const e = calcularEstado(s);
+    if (e.esCosecha) {
+      listas++;
+    } else {
+      enCurso++;
+      if (e.diasParaCosecha >= 0 && e.diasParaCosecha <= 7){
+        proximas++;
+      }
+    }
+  }
+
+  return { enCurso, listas, proximas, total: lista.length };
+}
+
+function renderStats(lista){
+  const stats = calcularStats(lista);
+  const elEnCurso = document.getElementById('statEnCurso');
+  const elListas = document.getElementById('statListas');
+  const elProximas = document.getElementById('statProximas');
+  if (elEnCurso) elEnCurso.textContent = stats.enCurso;
+  if (elListas) elListas.textContent = stats.listas;
+  if (elProximas) elProximas.textContent = stats.proximas;
+}
+
+function renderFiltros(lista){
+  const cont = document.getElementById('filtros');
+  if (!cont) return;
+
+  const cultivos = {};
+  for (const s of lista){
+    cultivos[s.cultivo] = (cultivos[s.cultivo] || 0) + 1;
+  }
+
+  const filtros = [
+    { id: 'todas',     label: 'Todas',    count: lista.length },
+    { id: 'en-curso',  label: 'En curso', count: lista.filter(s => !calcularEstado(s).esCosecha).length },
+    { id: 'listas',    label: 'Listas',   count: lista.filter(s => calcularEstado(s).esCosecha).length }
+  ];
+
+  Object.entries(cultivos).forEach(([key, count]) => {
+    filtros.push({
+      id: 'cultivo-' + key,
+      label: CULTIVOS[key].nombre,
+      count: count
+    });
+  });
+
+  cont.innerHTML = filtros.map(f => {
+    if (f.count === 0 && f.id !== 'todas') return '';
+    const activo = filtroActual === f.id;
+    return `
+      <button onclick="aplicarFiltro('${f.id}')"
+        class="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition border
+        ${activo
+          ? 'bg-brand-500 text-black border-brand-500'
+          : 'bg-white/[.03] text-slate-400 border-white/[.06] hover:text-slate-200 hover:border-white/[.12]'}">
+        ${f.label} <span class="opacity-70 ml-0.5">${f.count}</span>
+      </button>`;
+  }).join('');
+}
+
+function aplicarFiltro(id){
+  filtroActual = id;
+  renderSiembras();
+}
+window.aplicarFiltro = aplicarFiltro;
+
+function filtrarSiembras(lista){
+  if (filtroActual === 'todas') return lista;
+  if (filtroActual === 'en-curso') return lista.filter(s => !calcularEstado(s).esCosecha);
+  if (filtroActual === 'listas') return lista.filter(s => calcularEstado(s).esCosecha);
+  if (filtroActual.startsWith('cultivo-')){
+    const key = filtroActual.replace('cultivo-', '');
+    return lista.filter(s => s.cultivo === key);
+  }
+  return lista;
+}
+
 const getRecomendacion = (faseLunar, tipo) =>
      RECOMENDACIONES.find(r => r.fase === faseLunar && r.tipo === tipo)
   || RECOMENDACIONES.find(r => r.fase === faseLunar && r.tipo === 'todos')
@@ -507,9 +593,16 @@ function renderMoonBar(){
    RENDER SIEMBRAS
    ════════════════════════════════════════════════════════════ */
 function renderSiembras(){
-  const lista = cargarSiembras();
+  const listaCompleta = cargarSiembras();
   const cont = document.getElementById('listaSiembras');
   const contador = document.getElementById('contador');
+
+  // Dashboard y filtros (siempre sobre la lista completa)
+  renderStats(listaCompleta);
+  renderFiltros(listaCompleta);
+
+  // Lista filtrada
+  const lista = filtrarSiembras(listaCompleta);
   contador.textContent = lista.length;
 
   const lastUpd = document.getElementById('lastUpdate');
@@ -524,7 +617,7 @@ function renderSiembras(){
     }
   }
 
-  if (!lista.length){
+  if (!listaCompleta.length){
     cont.innerHTML = `
       <div class="col-span-full panel rounded-3xl p-12 text-center animate-fade-in">
         <div class="text-5xl mb-4 opacity-30 animate-float">🌱</div>
@@ -534,12 +627,27 @@ function renderSiembras(){
     return;
   }
 
+  if (!lista.length){
+    cont.innerHTML = `
+      <div class="col-span-full panel rounded-3xl p-12 text-center animate-fade-in">
+        <div class="text-5xl mb-4 opacity-30">🔍</div>
+        <p class="text-slate-400 text-sm font-bold">No hay siembras en este filtro</p>
+        <button onclick="aplicarFiltro('todas')" class="mt-4 text-xs font-bold text-brand-300 bg-brand-500/10 border border-brand-500/20 px-3 py-1.5 rounded-lg">
+          Ver todas
+        </button>
+      </div>`;
+    return;
+  }
+
   const m = getFaseActual();
 
-  cont.innerHTML = lista.map((s, i) => {
+  cont.innerHTML = lista.map((s) => {
     const e = calcularEstado(s);
     const rec = getRecomendacion(m.nombre, e.c.tipo);
     const p = PALETA[e.c.color];
+
+    // Necesitamos el índice real en la lista completa para eliminar
+    const idxReal = listaCompleta.indexOf(s);
 
     const recBlock = `
       <div class="mt-3 flex items-start gap-3 rounded-2xl ${rec.fav ? 'bg-white/[.03] border-white/[.06]' : 'bg-red-500/[.08] border-red-500/25'} border px-3.5 py-3">
@@ -600,7 +708,7 @@ function renderSiembras(){
               </p>
             </div>
           </div>
-          <button onclick="eliminar(${i})" title="Eliminar"
+          <button onclick="eliminar(${idxReal})" title="Eliminar"
             class="opacity-0 group-hover:opacity-100 transition-all duration-200 text-slate-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/20 shrink-0">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -665,7 +773,6 @@ function eliminar(idx){
   guardarSiembras(lista);
   renderSiembras();
 
-  // Auto-sincronizar si estamos online
   if (navigator.onLine){
     setTimeout(() => sincronizar(true), 500);
   }
@@ -717,7 +824,6 @@ function initFormulario(){
     renderSiembras();
     mostrarToast('✅ Guardado en el móvil');
 
-    // Auto-sincronizar si estamos online
     if (navigator.onLine){
       setTimeout(() => sincronizar(true), 500);
     }
@@ -1012,14 +1118,9 @@ if (document.readyState === 'loading'){
   actualizarEstadoConexion();
 }
 
-/* ════════════════════════════════════════════════════════════
-   EVENTOS DE CONEXIÓN
-   ════════════════════════════════════════════════════════════ */
 window.addEventListener('online', () => {
   actualizarEstadoConexion();
   mostrarToast('🌐 Conexión restaurada');
-
-  // Auto-sincronizar si hay pendientes
   if (contarPendientes() > 0){
     setTimeout(() => sincronizar(true), 1000);
   }
@@ -1039,27 +1140,26 @@ renderSiembras();
 initNotificaciones();
 setInterval(renderMoonBar, 3600000);
 
-// ─── Auto-sincronización ───
-// 1) Sincronizar al abrir la app si hay pendientes y hay conexión
+// Auto-sincronización al abrir la app
 setTimeout(() => {
   if (navigator.onLine && contarPendientes() > 0){
     sincronizar(true);
   }
 }, 2000);
 
-// 2) Sincronizar cada 5 minutos si hay pendientes
+// Auto-sincronización cada 5 minutos
 setInterval(() => {
   if (navigator.onLine && contarPendientes() > 0){
     sincronizar(true);
   }
 }, 5 * 60 * 1000);
 
-// 3) Revisar cambio de fase cada 30 minutos
+// Revisar cambio de fase cada 30 minutos
 setInterval(() => {
   notificarCambioFase(getFaseActual());
 }, 30 * 60 * 1000);
 
-// 4) Al volver a la app, revisar fase y sincronizar
+// Al volver a la app, revisar fase y sincronizar
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     notificarCambioFase(getFaseActual());

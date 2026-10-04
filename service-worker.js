@@ -7,7 +7,7 @@
    - Notificaciones de fase lunar
    ════════════════════════════════════════════════════════════ */
 
-const VERSION = 'v17';
+const VERSION = 'v18';
 const CACHE_STATIC = `mi-siembra-static-${VERSION}`;
 const CACHE_CDN    = `mi-siembra-cdn-${VERSION}`;
 const CACHE_API    = `mi-siembra-api-${VERSION}`;
